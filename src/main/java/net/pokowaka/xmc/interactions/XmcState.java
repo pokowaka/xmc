@@ -3,7 +3,8 @@ package net.pokowaka.xmc.interactions;
 /**
  * Created by erwinj on 1/8/17.
  */
-public enum Notification {
+public enum XmcState {
+    selected_mode, // No idea..
     power, //Zone 1 power “On”/”Off”
     source, //Zone 1 Input: “HDMI 1”, HDMI 2”, etc.
     dim, //Front Panel Dimness: “0”, “20”, “40”,”60”,”80”,”100”
@@ -12,6 +13,8 @@ public enum Notification {
     subwoofer, //Subwoofer Volume in dB
     surround, //Surrounds Volume in dB
     back, //Backs Volume in dB
+    mode_surround,
+    speaker_preset,
     volume, //Zone 1 Volume in dB
     loudness, //Zone 1 Loudness “On”/”Off”
     zone2_power, //Zone 2 power “On”/”Off”

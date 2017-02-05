@@ -40,7 +40,7 @@ public class Control {
 
     private InetSocketAddress address;
 
-    public SocketAddress getAddress() {
+    public InetSocketAddress getAddress() {
         return address;
     }
 
@@ -48,16 +48,19 @@ public class Control {
         this.address = (InetSocketAddress) address;
     }
 
-    public SocketAddress getControlAddress() {
+    public InetSocketAddress getControlAddress() {
         return new InetSocketAddress(address.getHostName(), controlPort);
     }
 
+    public InetSocketAddress getLocalControlAddress() {
+        return new InetSocketAddress("0.0.0.0", controlPort);
+    }
 
-    public SocketAddress getNotifyAddress() {
+    public InetSocketAddress getNotifyAddress() {
         return new InetSocketAddress("0.0.0.0", notifyPort);
     }
 
-    public SocketAddress getInfoAddress() {
+    public InetSocketAddress getInfoAddress() {
         return new InetSocketAddress(address.getHostName(), infoPort);
     }
 

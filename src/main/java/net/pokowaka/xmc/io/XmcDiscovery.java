@@ -7,6 +7,7 @@ import org.slf4j.LoggerFactory;
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBException;
 import javax.xml.bind.Unmarshaller;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.net.*;
 import java.nio.ByteBuffer;
@@ -17,25 +18,26 @@ import java.util.List;
 import java.util.concurrent.*;
 
 /**
- * Created by erwinj on 1/8/17.
+ * The XmcDiscovery class is capable of discovering all the XMC-1 devices
+ * on the current network. Usually you would use it like this:
+ * <p>
+ * Xmc xmc = XmcDiscovery.discover();
  */
-public class TransponderDiscovery {
+public class XmcDiscovery {
     public static final int TRANSPONDER_PORT = 7001;
     public static final int DISCOVER_PORT = 7000;
 
-    private static Logger logger = LoggerFactory.getLogger(TransponderDiscovery.class);
+    private static Logger logger = LoggerFactory.getLogger(XmcDiscovery.class);
 
     private List<TransponderEventListener> listeners = new CopyOnWriteArrayList<TransponderEventListener>();
     private Unmarshaller jaxbUnmarshaller;
+    private UdpPacketReceiver receiver;
 
-    DatagramChannel channel;
-    boolean mActive = true;
-
-    public TransponderDiscovery() throws IOException {
+    public XmcDiscovery() throws IOException {
         this(Executors.newSingleThreadExecutor());
     }
 
-    public TransponderDiscovery(ExecutorService es) throws IOException {
+    public XmcDiscovery(ExecutorService es) throws IOException {
         try {
             JAXBContext jaxbContext = JAXBContext.newInstance(Transponder.class);
             jaxbUnmarshaller = jaxbContext.createUnmarshaller();
@@ -43,30 +45,57 @@ public class TransponderDiscovery {
             logger.error("Failed to instantiate jaxb", ja);
             // Shouldnt 'happen
         }
-
-        channel = DatagramChannel.open();
-        channel.bind(new InetSocketAddress(TRANSPONDER_PORT));
-
-        Runnable task = () -> {
-            this.listen();
-        };
-        es.submit(task);
+        receiver = new UdpPacketReceiver(TRANSPONDER_PORT, es);
+        receiver.addPacketListener(new TransponderDiscoveryParser());
     }
 
     public void addTransponderEventListener(TransponderEventListener tel) {
         this.listeners.add(tel);
     }
 
-
     public void removeTransponderEventListener(TransponderEventListener tel) {
         this.listeners.remove(tel);
     }
 
-    public List<Transponder> discover() throws IOException {
-        return discover(1, TimeUnit.SECONDS);
+    public void stop() {
+        receiver.stop();
     }
 
-    public List<Transponder> discover(long timeout, TimeUnit unit) throws IOException {
+    /**
+     * Tries to discovers an XMC-1 device on the current network. This is a synchronous call that will block
+     * for at most one second. The first XMC-1 device to respond will be returned.
+     *
+     * @return The first discovered XMC-1 device.
+     * @throws IOException
+     */
+    public static Xmc discover() throws IOException {
+        ExecutorService es = Executors.newSingleThreadExecutor();
+        Xmc xmc = discover(es);
+        try {
+            es.shutdown();
+            es.awaitTermination(1, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            logger.error("This shouldn't happen", e);
+        }
+        return xmc;
+    }
+
+    public static Xmc discover(ExecutorService es) throws IOException {
+        XmcDiscovery td = new XmcDiscovery(es);
+        Transponder xmc = td.discover(1, TimeUnit.SECONDS);
+        td.stop();
+        return new Xmc(xmc, es);
+    }
+
+    /**
+     * Tries to discover an XMC-1 device on the current network within the given time frame.
+     *
+     * @param timeout The maximum amount of time we are willing to wait for a device to respond
+     * @param unit    The  unit of time.
+     * @return An XMC-1 device, or null if none was found in the given timeframe.
+     * @throws IOException
+     */
+    public Transponder discover(long timeout, TimeUnit unit) throws IOException {
         final ArrayList<Transponder> discovered = new ArrayList<Transponder>();
         final Semaphore lock = new Semaphore(1);
         try {
@@ -91,7 +120,7 @@ public class TransponderDiscovery {
 
         }
 
-        return discovered;
+        return discovered.isEmpty() ? null : discovered.get(0);
     }
 
     public void discoverAysnc() throws IOException {
@@ -103,28 +132,6 @@ public class TransponderDiscovery {
             InetSocketAddress addr = new InetSocketAddress(address.getHostAddress(), DISCOVER_PORT);
             logger.debug("Broadcast to " + addr);
             send.send(ping, addr);
-        }
-    }
-
-    public void listen() {
-        ByteBuffer buf = ByteBuffer.allocate(2048);
-        while (mActive) {
-            buf.clear();
-
-            try {
-
-                SocketAddress remote = channel.receive(buf);
-                ByteBufferInputStream bais = new ByteBufferInputStream(buf);
-                Transponder result = (Transponder) jaxbUnmarshaller.unmarshal(bais);
-                result.getControl().setAddress(remote);
-
-                logger.info("Discovered " + result);
-                for (TransponderEventListener tel : listeners) {
-                    tel.discovered(result);
-                }
-            } catch (Exception e) {
-                logger.error("Failed to deserialize object: " + new String(buf.array()), e);
-            }
         }
     }
 
@@ -146,5 +153,30 @@ public class TransponderDiscovery {
         }
 
         return list;
+    }
+
+    /**
+     * The interface for receiving events from the XMC-1
+     */
+    public interface TransponderEventListener {
+        void discovered(Transponder transponder);
+    }
+
+    private class TransponderDiscoveryParser implements UdpPacketReceiver.UdpPacketListener {
+        @Override
+        public void packetReceived(InetSocketAddress from, byte[] packet) {
+            ByteArrayInputStream bais = new ByteArrayInputStream(packet);
+            try {
+                Transponder result = (Transponder) jaxbUnmarshaller.unmarshal(bais);
+                result.getControl().setAddress(from);
+
+                logger.info("Discovered " + result);
+                for (TransponderEventListener tel : listeners) {
+                    tel.discovered(result);
+                }
+            } catch (Exception e) {
+                logger.error("Couldn't unmarshall: " + new String(packet), e);
+            }
+        }
     }
 }

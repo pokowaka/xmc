@@ -1,6 +1,10 @@
 package net.pokowaka.xmc.interactions;
 
 
+/**
+ * A value command is a command that usually takes an integer
+ * value, see the comments for more details.
+ */
 public enum ValueCommand {
     mode, // +1/-1 Mode up/down
     frequency, // +1/-1 Tuner Frequency up/down

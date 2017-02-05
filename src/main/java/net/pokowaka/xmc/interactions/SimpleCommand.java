@@ -1,5 +1,9 @@
 package net.pokowaka.xmc.interactions;
 
+/**
+ * A Simple Command is a command that takes no parameters.
+ * Usually the command speaks for it self.
+ */
 public enum SimpleCommand {
     none, //0 No command.  Ignored.
     standby, //0 Enter standby mode
