@@ -20,12 +20,11 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Represents the XMC-1. Usually you will get a reference to this by using the @see XmcDiscovery class.
- * <p>
- * NOTE: This currently is a singleton as we can really only handle communication with one Xmc-1 on the network.
+ * Represents the XMC-1. Usually you will get a reference to this by using the @see XmcDiscovery
+ * class. <p> NOTE: This currently is a singleton as we can really only handle communication with
+ * one Xmc-1 on the network.
  */
 public class Xmc {
-
     private static Logger logger = LoggerFactory.getLogger(Xmc.class);
     private final UdpPacketReceiver notifications;
     private final UdpPacketReceiver control;
@@ -36,16 +35,18 @@ public class Xmc {
 
     private boolean terminate = false;
 
-     Xmc(Transponder transponder) throws IOException {
+    Xmc(Transponder transponder) throws IOException {
         this(transponder, Executors.newSingleThreadExecutor());
         terminate = true;
     }
 
-     Xmc(Transponder transponder, ExecutorService es) throws IOException {
+    Xmc(Transponder transponder, ExecutorService es) throws IOException {
         this.transponder = transponder;
         this.es = es;
-        this.notifications = new UdpPacketReceiver(transponder.getControl().getNotifyAddress().getPort(), es);
-        this.control = new UdpPacketReceiver(transponder.getControl().getControlAddress().getPort());
+        this.notifications =
+            new UdpPacketReceiver(transponder.getControl().getNotifyAddress().getPort(), es);
+        this.control =
+            new UdpPacketReceiver(transponder.getControl().getControlAddress().getPort());
         this.notifications.addPacketListener(new UdpPacketReceiver.UdpPacketListener() {
             @Override
             public void packetReceived(InetSocketAddress from, byte[] packet) {
@@ -158,7 +159,8 @@ public class Xmc {
             return send(cmd.toXml());
         }
 
-        UdpPacketReceiver.send(cmd.toXml().getBytes(), transponder.getControl().getControlAddress());
+        UdpPacketReceiver.send(
+            cmd.toXml().getBytes(), transponder.getControl().getControlAddress());
         return "";
     }
 
@@ -192,7 +194,6 @@ public class Xmc {
         return xml;
     }
 
-
     private String subscribeXml(Iterable<XmcState> notifications) {
         String xml = "<emotivaSubscription>";
         for (XmcState n : notifications) {
@@ -204,9 +205,8 @@ public class Xmc {
 
     @Override
     public String toString() {
-        return "Xmc{" +
-                "status=" + status +
-                '}';
+        return "Xmc{"
+            + "status=" + status + '}';
     }
 
     public interface Xmc1StateListener {

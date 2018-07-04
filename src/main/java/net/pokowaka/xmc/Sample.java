@@ -17,6 +17,10 @@ public class Sample {
         XmcState[] all = XmcState.values();
         Xmc xmc  = XmcDiscovery.discover();
 
+        if (xmc == null) {
+            System.out.println("Cannot find Xmc-1");
+            return;
+        }
         // Register for events..
         xmc.addXmc1StateListener(new Xmc.Xmc1StateListener() {
             @Override

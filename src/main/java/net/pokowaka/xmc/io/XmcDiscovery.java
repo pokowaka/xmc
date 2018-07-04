@@ -84,7 +84,7 @@ public class XmcDiscovery {
         XmcDiscovery td = new XmcDiscovery(es);
         Transponder xmc = td.discover(1, TimeUnit.SECONDS);
         td.stop();
-        return new Xmc(xmc, es);
+        return xmc == null ? null : new Xmc(xmc, es);
     }
 
     /**
